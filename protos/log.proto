@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package log;
+
+service Sequence {
+  rpc WriteLog(LogEntry) returns (LogResponse);
+  rpc RetrieveIndex(IndexRequest) returns (IndexResponse);
+}
+
+message LogEntry {
+  int32 term = 1;
+  int32 index = 2;
+  string command = 3;
+  string data = 4;
+}
+
+message LogResponse { int32 ack = 1; }
+
+message IndexRequest {
+  int32 term = 1;
+  int32 index = 2;
+}
+
+message IndexResponse {
+  int32 term = 1;
+  int32 index = 2;
+}
