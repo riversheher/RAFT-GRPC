@@ -80,6 +80,22 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
         #TODO: Implement RetrieveIndex - get next index for log replication
         return super().RetrieveIndex(request, context)
     
+    def TryLog(self, logItem: LogItem) -> bool:
+        """This is a wrapper for the log replication process.
+        It will send a WriteLog request to all backups, and wait for a majority of them to respond.
+        If a majority of them respond, it will return True.
+        Otherwise, it will return False
+        - When it returns False, the primary should not commit the log entry and should retry.
+        - After a retry, if the primary still cannot commit the log entry, it should fail the request.
+
+        Args:
+            logItem (LogItem): The log item we want to replicate
+
+        Returns:
+            bool: Is the log item replicated successfully?
+        """
+        
+    
     
 def serve():
     # Command line configs
