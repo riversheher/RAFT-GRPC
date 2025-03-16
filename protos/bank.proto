@@ -6,6 +6,7 @@ service Bank {
   rpc Deposit(DepositRequest) returns (TransactionResponse);
   rpc Withdraw(WithdrawRequest) returns (TransactionResponse);
   rpc CalculateInterest(InterestRequest) returns (TransactionResponse);
+  rpc GetHistory(HistoryRequest) returns (HistoryResponse);
 }
 
 message AccountRequest {
@@ -43,4 +44,11 @@ message TransactionResponse {
   string account_id = 1;
   string message = 2; // Transaction status
   double balance = 3; // Updated balance
+}
+
+message HistoryRequest { string account_id = 1; }
+
+message HistoryResponse {
+  string account_id = 1;
+  repeated TransactionResponse transactions = 2;
 }

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package log;
 
-service Sequence {
+service Logger {
   rpc WriteLog(LogEntry) returns (LogResponse);
   rpc RetrieveIndex(IndexRequest) returns (IndexResponse);
 }
