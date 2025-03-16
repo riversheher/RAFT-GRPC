@@ -37,7 +37,7 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
         self.backups = backups
         self.log = []
         
-    # Bank methods
+    #TODO: Bank methods
     def CreateAccount(self, request, context):
         #TODO: Implement CreateAccount
         return super().CreateAccount(request, context)
@@ -62,7 +62,7 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
         #TODO: Implement GetHistory
         return super().GetHistory(request, context)
     
-    # Heartbeat/Election methods
+    #TODO: Heartbeat/Election methods
     def Heartbeat(self, request, context):
         #TODO: Implement Heartbeat
         return super().Heartbeat(request, context)
@@ -71,7 +71,7 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
         #TODO: Implement RequestVote
         return super().RequestVote(request, context)
     
-    # Log methods
+    #TODO: Log methods
     def WriteLog(self, request, context):
         #TODO: Implement WriteLog - with log replication
         return super().WriteLog(request, context)
@@ -94,6 +94,7 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
         Returns:
             bool: Is the log item replicated successfully?
         """
+        return True
         
     
     
