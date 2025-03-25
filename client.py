@@ -1,6 +1,7 @@
 import grpc
 import sys
 
+import bank_pb2
 from bank_pb2 import AccountRequest, DepositRequest, WithdrawRequest, InterestRequest, HistoryRequest
 from bank_pb2_grpc import BankStub
 
@@ -10,19 +11,32 @@ def create_account(stub: BankStub, account_id: str, account_type: str) -> str:
     return response.message
 
 def deposit(stub: BankStub, account_id: str, amount: float) -> str:
-    return "not implemented"
+    request = bank_pb2.DepositRequest(account_id=account_id, amount=amount)
+    response = stub.Deposit(request)
+    return f"{response.message} New Balance: {response.balance}"
+
 
 def withdraw(stub: BankStub, account_id: str, amount: float) -> str:
-    return "not implemented"
+    request = bank_pb2.WithdrawRequest(account_id=account_id, amount=amount)
+    response = stub.Withdraw(request)
+    return f"{response.message} New Balance: {response.balance}"
+
 
 def balance(stub: BankStub, account_id: str) -> str:
-    return "not implemented"
+    request = bank_pb2.AccountRequest(account_id=account_id)
+    response = stub.GetBalance(request)
+    return response.balance
 
 def calculate_interest(stub: BankStub, account_id: str, annual_interest_rate: float) -> str:
-    return "not implemented"
+    request = bank_pb2.InterestRequest(account_id=account_id, annual_interest_rate=annual_interest_rate)
+    response = stub.CalculateInterest(request)
+    return f"{response.message} New Balance: {response.balance}"
+
 
 def get_history(stub: BankStub, account_id: str) -> str:
-    return "not implemented"
+    request = bank_pb2.HistoryRequest(account_id=account_id)
+    response = stub.GetHistory(request)
+    return "\n".join(response.transactions)
 
 def run():
     if len(sys.argv) < 2:
