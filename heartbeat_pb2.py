@@ -25,7 +25,7 @@ _sym_db = _symbol_database.Default()
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0fheartbeat.proto\x12\theartbeat\x1a\x1bgoogle/protobuf/empty.proto\"a\n\x10HeartbeatRequest\x12\x1a\n\x12service_identifier\x18\x01 \x01(\t\x12\x0c\n\x04term\x18\x02 \x01(\t\x12\x11\n\tlog_index\x18\x03 \x01(\t\x12\x10\n\x08log_term\x18\x04 \x01(\t\"$\n\x11HeartbeatResponse\x12\x0f\n\x07message\x18\x01 \x01(\t\"`\n\x0bVoteRequest\x12\x0c\n\x04term\x18\x01 \x01(\x05\x12\x14\n\x0c\x63\x61ndidate_id\x18\x02 \x01(\t\x12\x16\n\x0elast_log_index\x18\x03 \x01(\x05\x12\x15\n\rlast_log_term\x18\x04 \x01(\x05\"2\n\x0cVoteResponse\x12\x0c\n\x04term\x18\x01 \x01(\x05\x12\x14\n\x0cvote_granted\x18\x02 \x01(\x08\x32\x8d\x01\n\tHeartbeat\x12@\n\tHeartbeat\x12\x1b.heartbeat.HeartbeatRequest\x1a\x16.google.protobuf.Empty\x12>\n\x0bRequestVote\x12\x16.heartbeat.VoteRequest\x1a\x17.heartbeat.VoteResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0fheartbeat.proto\x12\theartbeat\x1a\x1bgoogle/protobuf/empty.proto\"a\n\x10HeartbeatRequest\x12\x1a\n\x12service_identifier\x18\x01 \x01(\t\x12\x0c\n\x04term\x18\x02 \x01(\x05\x12\x11\n\tlog_index\x18\x03 \x01(\x05\x12\x10\n\x08log_term\x18\x04 \x01(\x05\"2\n\x11HeartbeatResponse\x12\x0f\n\x07success\x18\x01 \x01(\x08\x12\x0c\n\x04term\x18\x02 \x01(\x05\"`\n\x0bVoteRequest\x12\x0c\n\x04term\x18\x01 \x01(\x05\x12\x14\n\x0c\x63\x61ndidate_id\x18\x02 \x01(\t\x12\x16\n\x0elast_log_index\x18\x03 \x01(\x05\x12\x15\n\rlast_log_term\x18\x04 \x01(\x05\"2\n\x0cVoteResponse\x12\x0c\n\x04term\x18\x01 \x01(\x05\x12\x14\n\x0cvote_granted\x18\x02 \x01(\x08\x32\x8d\x01\n\tHeartbeat\x12@\n\tHeartbeat\x12\x1b.heartbeat.HeartbeatRequest\x1a\x16.google.protobuf.Empty\x12>\n\x0bRequestVote\x12\x16.heartbeat.VoteRequest\x1a\x17.heartbeat.VoteResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -35,11 +35,11 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_HEARTBEATREQUEST']._serialized_start=59
   _globals['_HEARTBEATREQUEST']._serialized_end=156
   _globals['_HEARTBEATRESPONSE']._serialized_start=158
-  _globals['_HEARTBEATRESPONSE']._serialized_end=194
-  _globals['_VOTEREQUEST']._serialized_start=196
-  _globals['_VOTEREQUEST']._serialized_end=292
-  _globals['_VOTERESPONSE']._serialized_start=294
-  _globals['_VOTERESPONSE']._serialized_end=344
-  _globals['_HEARTBEAT']._serialized_start=347
-  _globals['_HEARTBEAT']._serialized_end=488
+  _globals['_HEARTBEATRESPONSE']._serialized_end=208
+  _globals['_VOTEREQUEST']._serialized_start=210
+  _globals['_VOTEREQUEST']._serialized_end=306
+  _globals['_VOTERESPONSE']._serialized_start=308
+  _globals['_VOTERESPONSE']._serialized_end=358
+  _globals['_HEARTBEAT']._serialized_start=361
+  _globals['_HEARTBEAT']._serialized_end=502
 # @@protoc_insertion_point(module_scope)
