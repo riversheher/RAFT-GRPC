@@ -207,28 +207,57 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
 
     #TODO: Bank methods
     def CreateAccount(self, request, context):
-        #TODO: Implement CreateAccount
-        return super().CreateAccount(request, context)
+        if request.account_id in self.accounts:
+            return AccountResponse(account_id=request.account_id, message="Account already exists.")
+        self.accounts[request.account_id] = 0.0
+        self.transaction_history[request.account_id] = []
+        return AccountResponse(account_id=request.account_id, message="Account created successfully.")
 
     def GetBalance(self, request, context):
-        #TODO: Implement GetBalance
-        return super().GetBalance(request, context)
+        balance = self.accounts.get(request.account_id)
+        if balance is None:
+            return BalanceResponse(account_id=request.account_id, balance=0.0, message="Account not found.")
+        return BalanceResponse(account_id=request.account_id, balance=balance,
+                               message="Balance retrieved successfully.")
 
     def Deposit(self, request, context):
-        #TODO: Implement Deposit
-        return super().Deposit(request, context)
+        if request.account_id not in self.accounts:
+            return TransactionResponse(account_id=request.account_id, message="Account not found.", balance=0.0)
+        self.accounts[request.account_id] += request.amount
+        self.transaction_history[request.account_id].append(
+            TransactionResponse(account_id=request.account_id, message=f"Deposit: {request.amount}",
+                                balance=self.accounts[request.account_id]))
+        return TransactionResponse(account_id=request.account_id, message="Deposit successful.",
+                                   balance=self.accounts[request.account_id])
 
     def Withdraw(self, request, context):
-        #TODO: Implement Withdraw
-        return super().Withdraw(request, context)
+        if request.account_id not in self.accounts:
+            return TransactionResponse(account_id=request.account_id, message="Account not found.", balance=0.0)
+        if self.accounts[request.account_id] < request.amount:
+            return TransactionResponse(account_id=request.account_id, message="Insufficient funds.",
+                                       balance=self.accounts[request.account_id])
+        self.accounts[request.account_id] -= request.amount
+        self.transaction_history[request.account_id].append(
+            TransactionResponse(account_id=request.account_id, message=f"Withdraw: {request.amount}",
+                                balance=self.accounts[request.account_id]))
+        return TransactionResponse(account_id=request.account_id, message="Withdrawal successful.",
+                                   balance=self.accounts[request.account_id])
 
     def CalculateInterest(self, request, context):
-        #TODO: Implement CalculateInterest
-        return super().CalculateInterest(request, context)
+        if request.account_id not in self.accounts:
+            return TransactionResponse(account_id=request.account_id, message="Account not found.", balance=0.0)
+        interest = self.accounts[request.account_id] * request.annual_interest_rate / 100
+        self.accounts[request.account_id] += interest
+        self.transaction_history[request.account_id].append(
+            TransactionResponse(account_id=request.account_id, message=f"Interest Applied: {interest}",
+                                balance=self.accounts[request.account_id]))
+        return TransactionResponse(account_id=request.account_id, message=f"Interest applied: {interest}",
+                                   balance=self.accounts[request.account_id])
 
     def GetHistory(self, request, context):
-        #TODO: Implement GetHistory
-        return super().GetHistory(request, context)
+        if request.account_id not in self.transaction_history:
+            return HistoryResponse(account_id=request.account_id, transactions=[])
+        return HistoryResponse(account_id=request.account_id, transactions=self.transaction_history[request.account_id])
 
     #TODO: Log methods
     def WriteLog(self, request, context):
