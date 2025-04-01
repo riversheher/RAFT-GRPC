@@ -39,23 +39,12 @@ class LoggerStub(object):
                 request_serializer=log__pb2.LogEntry.SerializeToString,
                 response_deserializer=log__pb2.LogResponse.FromString,
                 _registered_method=True)
-        self.RetrieveIndex = channel.unary_unary(
-                '/log.Logger/RetrieveIndex',
-                request_serializer=log__pb2.IndexRequest.SerializeToString,
-                response_deserializer=log__pb2.IndexResponse.FromString,
-                _registered_method=True)
 
 
 class LoggerServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def WriteLog(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def RetrieveIndex(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -68,11 +57,6 @@ def add_LoggerServicer_to_server(servicer, server):
                     servicer.WriteLog,
                     request_deserializer=log__pb2.LogEntry.FromString,
                     response_serializer=log__pb2.LogResponse.SerializeToString,
-            ),
-            'RetrieveIndex': grpc.unary_unary_rpc_method_handler(
-                    servicer.RetrieveIndex,
-                    request_deserializer=log__pb2.IndexRequest.FromString,
-                    response_serializer=log__pb2.IndexResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -102,33 +86,6 @@ class Logger(object):
             '/log.Logger/WriteLog',
             log__pb2.LogEntry.SerializeToString,
             log__pb2.LogResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def RetrieveIndex(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/log.Logger/RetrieveIndex',
-            log__pb2.IndexRequest.SerializeToString,
-            log__pb2.IndexResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tlog.proto\x12\x03log\"F\n\x08LogEntry\x12\x0c\n\x04term\x18\x01 \x01(\x05\x12\r\n\x05index\x18\x02 \x01(\x05\x12\x0f\n\x07\x63ommand\x18\x03 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x04 \x01(\t\"\x1a\n\x0bLogResponse\x12\x0b\n\x03\x61\x63k\x18\x01 \x01(\x05\"+\n\x0cIndexRequest\x12\x0c\n\x04term\x18\x01 \x01(\x05\x12\r\n\x05index\x18\x02 \x01(\x05\",\n\rIndexResponse\x12\x0c\n\x04term\x18\x01 \x01(\x05\x12\r\n\x05index\x18\x02 \x01(\x05\x32m\n\x06Logger\x12+\n\x08WriteLog\x12\r.log.LogEntry\x1a\x10.log.LogResponse\x12\x36\n\rRetrieveIndex\x12\x11.log.IndexRequest\x1a\x12.log.IndexResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tlog.proto\x12\x03log\"V\n\x08LogEntry\x12\x0c\n\x04term\x18\x01 \x01(\x05\x12\r\n\x05index\x18\x02 \x01(\x05\x12\x0f\n\x07\x63ommand\x18\x03 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x04 \x01(\t\x12\x0e\n\x06\x63ommit\x18\x05 \x01(\x08\"A\n\x0bLogResponse\x12\x0b\n\x03\x61\x63k\x18\x01 \x01(\x08\x12\x11\n\tcurr_term\x18\x02 \x01(\x05\x12\x12\n\nnext_index\x18\x03 \x01(\x05\x32\x35\n\x06Logger\x12+\n\x08WriteLog\x12\r.log.LogEntry\x1a\x10.log.LogResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,13 +32,9 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'log_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
   _globals['_LOGENTRY']._serialized_start=18
-  _globals['_LOGENTRY']._serialized_end=88
-  _globals['_LOGRESPONSE']._serialized_start=90
-  _globals['_LOGRESPONSE']._serialized_end=116
-  _globals['_INDEXREQUEST']._serialized_start=118
-  _globals['_INDEXREQUEST']._serialized_end=161
-  _globals['_INDEXRESPONSE']._serialized_start=163
-  _globals['_INDEXRESPONSE']._serialized_end=207
-  _globals['_LOGGER']._serialized_start=209
-  _globals['_LOGGER']._serialized_end=318
+  _globals['_LOGENTRY']._serialized_end=104
+  _globals['_LOGRESPONSE']._serialized_start=106
+  _globals['_LOGRESPONSE']._serialized_end=171
+  _globals['_LOGGER']._serialized_start=173
+  _globals['_LOGGER']._serialized_end=226
 # @@protoc_insertion_point(module_scope)

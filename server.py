@@ -12,7 +12,7 @@ import logging
 HEARTBEAT_INTERVAL = 5  # Heartbeat interval in seconds
 ELECTION_TIMEOUT = 10   # Timeout before starting election
 
-from log_pb2 import LogEntry, LogResponse, IndexRequest, IndexResponse
+from log_pb2 import LogEntry, LogResponse
 from bank_pb2 import AccountRequest, AccountResponse, BalanceResponse, DepositRequest, WithdrawRequest, InterestRequest, TransactionResponse, HistoryRequest, HistoryResponse
 
 # configure logging message
@@ -35,6 +35,7 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
         self.logFile = logFile
         self.backups = backups
         self.log = []
+        self.next_index = 0
         self.term = 0     # track the current term in RAFT system
         self.node_id = node_id
         self.voted_for = None
@@ -261,12 +262,39 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
 
     #TODO: Log methods
     def WriteLog(self, request, context):
-        #TODO: Implement WriteLog - with log replication
-        return super().WriteLog(request, context)
-
-    def RetrieveIndex(self, request, context):
-        #TODO: Implement RetrieveIndex - get next index for log replication
-        return super().RetrieveIndex(request, context)
+        #Get the log term and index
+        log_index = request.index
+        log_term = request.term
+        
+        if (self.isPrimary):
+            #return true in this case since the primary should always be able to write to its own log
+            #primary will write to its own log in the TryLog method
+            return LogResponse(success=True, index=log_index, term=self.term)
+        
+        # If the log index is greater than the next index, return a negative log response
+        # The leader should now try sending a lower index until it matches the follower
+        # Unsucessful case
+        if (log_index > self.next_index):
+            return LogResponse(success=False, index=self.next_index, term=self.term)
+        
+        # If the log index is less than the current term, delete the log entry until it matches leader
+        # Sucessful case
+        elif (log_index < self.next_index):
+            del self.log[log_index:]
+            self.next_index = log_index
+            # Return a positive log response
+            return LogResponse(success=True, index=log_index, term=self.term)           
+        
+        # If the log index is the same as the next index, append the log entry
+        # Sucessful case
+        else:
+            entry = LogItem(index=log_index, term=log_term, command=request.command)
+            self.log.append(entry)
+            self.next_index += 1
+            self.term = log_term
+            # Return a positive log response
+            return LogResponse(success=True, index=log_index, term=self.term)
+        
 
     def TryLog(self, logItem: LogItem) -> bool:
         """This is a wrapper for the log replication process.
@@ -282,6 +310,24 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
     #     Returns:
     #         bool: Is the log item replicated successfully?
     #     """
+    
+        # iterate through all backups
+        for backup in self.backups:
+            try:
+                # create a gRPC communication channel to the follower
+                channel = grpc.insecure_channel(f'localhost:{backup}')
+                stub = log_pb2_grpc.LoggerStub(channel)
+                request = LogEntry(
+                    index=logItem.index,
+                    term=logItem.term,
+                    command=logItem.command
+                )
+                response = stub.WriteLog(request)
+                logging.info(f"WriteLog response from backup {backup}: {response}")
+            except grpc.RpcError as e:
+                logging.error(f"Failed to send WriteLog to backup {backup}")
+                continue
+            
         return True
 
 

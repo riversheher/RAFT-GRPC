@@ -12,16 +12,18 @@ class HeartbeatRequest(_message.Message):
     LOG_INDEX_FIELD_NUMBER: _ClassVar[int]
     LOG_TERM_FIELD_NUMBER: _ClassVar[int]
     service_identifier: str
-    term: str
-    log_index: str
-    log_term: str
-    def __init__(self, service_identifier: _Optional[str] = ..., term: _Optional[str] = ..., log_index: _Optional[str] = ..., log_term: _Optional[str] = ...) -> None: ...
+    term: int
+    log_index: int
+    log_term: int
+    def __init__(self, service_identifier: _Optional[str] = ..., term: _Optional[int] = ..., log_index: _Optional[int] = ..., log_term: _Optional[int] = ...) -> None: ...
 
 class HeartbeatResponse(_message.Message):
-    __slots__ = ("message",)
-    MESSAGE_FIELD_NUMBER: _ClassVar[int]
-    message: str
-    def __init__(self, message: _Optional[str] = ...) -> None: ...
+    __slots__ = ("success", "term")
+    SUCCESS_FIELD_NUMBER: _ClassVar[int]
+    TERM_FIELD_NUMBER: _ClassVar[int]
+    success: bool
+    term: int
+    def __init__(self, success: bool = ..., term: _Optional[int] = ...) -> None: ...
 
 class VoteRequest(_message.Message):
     __slots__ = ("term", "candidate_id", "last_log_index", "last_log_term")

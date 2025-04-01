@@ -2,10 +2,7 @@ syntax = "proto3";
 
 package log;
 
-service Logger {
-  rpc WriteLog(LogEntry) returns (LogResponse);
-  rpc RetrieveIndex(IndexRequest) returns (IndexResponse);
-}
+service Logger { rpc WriteLog(LogEntry) returns (LogResponse); }
 
 message LogEntry {
   int32 term = 1;
@@ -14,14 +11,8 @@ message LogEntry {
   string data = 4;
 }
 
-message LogResponse { int32 ack = 1; }
-
-message IndexRequest {
-  int32 term = 1;
-  int32 index = 2;
-}
-
-message IndexResponse {
-  int32 term = 1;
-  int32 index = 2;
+message LogResponse {
+  bool ack = 1;
+  int32 curr_term = 2;
+  int32 next_index = 3;
 }
