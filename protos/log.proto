@@ -13,6 +13,5 @@ message LogEntry {
 
 message LogResponse {
   bool ack = 1;
-  int32 curr_term = 2;
-  int32 next_index = 3;
+  int32 term = 2;
 }

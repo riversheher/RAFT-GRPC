@@ -36,7 +36,15 @@ def calculate_interest(stub: BankStub, account_id: str, annual_interest_rate: fl
 def get_history(stub: BankStub, account_id: str) -> str:
     request = bank_pb2.HistoryRequest(account_id=account_id)
     response = stub.GetHistory(request)
-    return "\n".join(response.transactions)
+    
+    history = []
+    transaction_num = 0
+    for transaction in response.transactions:
+        transaction_num += 1
+        history.append(f"Account: {transaction.account_id} - Transaction#: {transaction_num} - {transaction.message} - end balance: {transaction.balance}")
+        
+    return "\n".join(history)
+        
 
 def run():
     if len(sys.argv) < 2:

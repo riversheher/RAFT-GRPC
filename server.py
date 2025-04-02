@@ -46,6 +46,12 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
         self.old_primary = None        # stores the previous leader
         self.in_election = False       # indicates if the node is currently in election
 
+        # Bank attributes
+        # key: account_id, value: balance
+        self.accounts = {}
+        # key: account_id, value: list of transactions
+        self.transaction_history = {}
+        
         if self.isPrimary:
             self.old_primary = node_id
             # start a background thread for sending heartbeats
@@ -225,9 +231,18 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
         if request.account_id not in self.accounts:
             return TransactionResponse(account_id=request.account_id, message="Account not found.", balance=0.0)
         self.accounts[request.account_id] += request.amount
+        
+        # create a log item for the deposit
+        logItem = LogItem(index=self.next_index, term=self.term, command=f"Account {request.account_id} - Deposit: {request.amount}")
+        # try to replicate the log
+        if not self.TryLog(logItem):
+            return TransactionResponse(account_id=request.account_id, message="Deposit failed, try again later", balance=self.accounts[request.account_id])
+        
+        # Append the transaction to the transaction history
         self.transaction_history[request.account_id].append(
             TransactionResponse(account_id=request.account_id, message=f"Deposit: {request.amount}",
                                 balance=self.accounts[request.account_id]))
+        
         return TransactionResponse(account_id=request.account_id, message="Deposit successful.",
                                    balance=self.accounts[request.account_id])
 
@@ -238,9 +253,18 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
             return TransactionResponse(account_id=request.account_id, message="Insufficient funds.",
                                        balance=self.accounts[request.account_id])
         self.accounts[request.account_id] -= request.amount
+        
+        #create a log item for the withdrawal
+        logItem = LogItem(index=self.next_index, term=self.term, command=f"Account {request.account_id} - Withdraw: {request.amount}")
+        # try to replicate the log
+        if not self.TryLog(logItem):
+            return TransactionResponse(account_id=request.account_id, message="Withdrawal failed, try again later", balance=self.accounts[request.account_id])
+        
+        # Append the transaction to the transaction history
         self.transaction_history[request.account_id].append(
             TransactionResponse(account_id=request.account_id, message=f"Withdraw: {request.amount}",
                                 balance=self.accounts[request.account_id]))
+        
         return TransactionResponse(account_id=request.account_id, message="Withdrawal successful.",
                                    balance=self.accounts[request.account_id])
 
@@ -249,9 +273,17 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
             return TransactionResponse(account_id=request.account_id, message="Account not found.", balance=0.0)
         interest = self.accounts[request.account_id] * request.annual_interest_rate / 100
         self.accounts[request.account_id] += interest
+        
+        #create a log item for the interest
+        logItem = LogItem(index=self.next_index, term=self.term, command=f"Account {request.account_id} - Interest: {interest}")
+        if not self.TryLog(logItem):
+            return TransactionResponse(account_id=request.account_id, message="Interest calculation failed, try again later", balance=self.accounts[request.account_id])
+        
+        # Append the transaction to the transaction history
         self.transaction_history[request.account_id].append(
             TransactionResponse(account_id=request.account_id, message=f"Interest Applied: {interest}",
                                 balance=self.accounts[request.account_id]))
+        
         return TransactionResponse(account_id=request.account_id, message=f"Interest applied: {interest}",
                                    balance=self.accounts[request.account_id])
 
@@ -268,14 +300,14 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
         
         if (self.isPrimary):
             #return true in this case since the primary should always be able to write to its own log
-            #primary will write to its own log in the TryLog method
-            return LogResponse(success=True, index=log_index, term=self.term)
+            #primary will write to its own log in the TryLog method, after majority of backups have replicated the log
+            return LogResponse(ack=True, term=self.term)
         
         # If the log index is greater than the next index, return a negative log response
         # The leader should now try sending a lower index until it matches the follower
         # Unsucessful case
         if (log_index > self.next_index):
-            return LogResponse(success=False, index=self.next_index, term=self.term)
+            return LogResponse(ack=False, term=self.term)
         
         # If the log index is less than the current term, delete the log entry until it matches leader
         # Sucessful case
@@ -283,7 +315,7 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
             del self.log[log_index:]
             self.next_index = log_index
             # Return a positive log response
-            return LogResponse(success=True, index=log_index, term=self.term)           
+            return LogResponse(ack=True, term=self.term)           
         
         # If the log index is the same as the next index, append the log entry
         # Sucessful case
@@ -293,7 +325,7 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
             self.next_index += 1
             self.term = log_term
             # Return a positive log response
-            return LogResponse(success=True, index=log_index, term=self.term)
+            return LogResponse(ack=True, term=self.term)
         
 
     def TryLog(self, logItem: LogItem) -> bool:
@@ -311,7 +343,17 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
     #         bool: Is the log item replicated successfully?
     #     """
     
-        # iterate through all backups
+        # create a dictionary for each backup, their next index, and if they have successfully replicated the log
+        backup_status = {}
+        for backup in self.backups:
+            backup_status[backup] = {
+                "next_index": self.next_index,
+                "success": False
+            }
+            
+        # boolean to keep track of the state of the log replication
+        replicated = False
+        
         for backup in self.backups:
             try:
                 # create a gRPC communication channel to the follower
@@ -323,12 +365,50 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
                     command=logItem.command
                 )
                 response = stub.WriteLog(request)
-                logging.info(f"WriteLog response from backup {backup}: {response}")
+                
+                # if the log is successfully replicated, update the status
+                if response.ack:
+                    backup_status[backup]["success"] = True
+                else:
+                    # if the log is not successfully replicated, update the next index
+                    backup_status[backup]["next_index"] = response.index
+                    
+                    # send logs with the next index to the backup until it catches up
+                    while backup_status[backup]["next_index"] < self.next_index:
+                        request = LogEntry(
+                            index=backup_status[backup]["next_index"],
+                            term=self.log[backup_status[backup]["next_index"]].term,
+                            command=self.log[backup_status[backup]["next_index"]].command
+                        )
+                        response = stub.WriteLog(request)
+                        if response.ack:
+                            backup_status[backup]["next_index"] += 1
+                        else:
+                            break
+                        
+                    # if after the while loop the backup has caught up, update the status
+                    if backup_status[backup]["next_index"] == self.next_index:
+                        backup_status[backup]["success"] = True
+                    # if the backup has not caught up, continue to the next backup, and do not update the status to success
+                        
             except grpc.RpcError as e:
-                logging.error(f"Failed to send WriteLog to backup {backup}")
+                # if backup fails for some reason, skip it and continue to the next backup
+                logging.error(f"Failed to send log entry to backup {backup}")
                 continue
-            
-        return True
+                
+            # check if a majority of the backups have successfully replicated the log
+            success_count = sum([1 for status in backup_status.values() if status["success"]])
+            if success_count > len(self.backups) // 2:
+                replicated = True
+                
+                # Write log to primary's own log
+                self.log.append(logItem)
+                self.next_index += 1
+        
+        
+        
+        
+        return replicated
 
 
 def serve():
