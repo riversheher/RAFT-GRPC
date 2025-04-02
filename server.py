@@ -74,7 +74,7 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
                             request = heartbeat_pb2.HeartbeatRequest(
                                 service_identifier="leader",
                                 term=self.term,
-                                log_index=len(self.log),
+                                log_index=self.log[-1].index if self.log else -1,
                                 log_term=self.term
                             )
                             response = stub.Heartbeat(request)
@@ -138,7 +138,7 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
                     request = heartbeat_pb2.VoteRequest(
                         term=self.term,
                         candidate_id=self.node_id,
-                        last_log_index=len(self.log),
+                        last_log_index=self.log[-1].index if self.log else -1,
                         last_log_term=self.term
                     )
                     response = stub.RequestVote(request, timeout=5)
@@ -198,8 +198,8 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
                     return heartbeat_pb2.VoteResponse(term=self.term, vote_granted=False)
 
                 # check the logs to decide if the node should grant the vote
-                last_log_index = len(self.log) - 1
-                last_log_term = self.log[last_log_index]['term'] if self.log else 0
+                last_log_index = self.log[-1].index if self.log else -1
+                last_log_term = self.log[-1]['term'] if self.log else 0
                 # if the candidate's log is less up-to-date, deny the vote
                 if (request.last_log_term < last_log_term) or \
                         (request.last_log_term == last_log_term and request.last_log_index < last_log_index):
