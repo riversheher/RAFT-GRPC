@@ -46,7 +46,6 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
         self.heartbeat_received = False      # indicate if a heartbeat received from the leader
         self.lock = threading.Lock()
         self.heartbeat_event = threading.Event()        # synchronizes heartbeat handling
-        self.old_primary = None        # stores the previous leader
         self.in_election = False       # indicates if the node is currently in election
 
         # Bank attributes
@@ -59,7 +58,6 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
         self.client = "50050"
         
         if self.isPrimary:
-            self.old_primary = node_id
             # start a background thread for sending heartbeats
             threading.Thread(target=self.send_heartbeats, daemon=True).start()
         else:
@@ -84,7 +82,7 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
         try:
             logging.info("send_heartbeats started")
             while self.isPrimary:
-                logging.info(f"Heartbeat sent from primary (term: {self.term})")
+                logging.info(f"Heartbeat sent from primary (term: {self.term}, next_index: {self.next_index})")
                 for backup in self.backups:
                     if backup != self.node_id:
                         try:
@@ -180,8 +178,6 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
             # if the node gets more than half the votes, it becomes primary.
             if self.votes_received > len(self.backups) // 2:
                 self.isPrimary = True
-                self.old_primary = self.node_id
-                self.backups = [b for b in self.backups if b != self.node_id]   # remove leader from backup list
 
                 logging.info(f"Election won! Node {self.node_id} becomes primary for term {self.term}")
                 self.update_client_with_primary()
@@ -385,21 +381,24 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
         if (self.isPrimary):
             #return true in this case since the primary should always be able to write to its own log
             #primary will write to its own log in the TryLog method, after majority of backups have replicated the log
-            return LogResponse(ack=True, term=self.term)
+            print("SUCCESS I AM PRIMARY")
+            return LogResponse(ack=True, term=self.term, index=self.next_index)
         
         # If the log index is greater than the next index, return a negative log response
         # The leader should now try sending a lower index until it matches the follower
         # Unsucessful case
         if (log_index > self.next_index):
-            return LogResponse(ack=False, term=self.term)
+            print("FAIL I AM BACKUP WITH NEXT INDEX " , self.next_index, " LOG INDEX: ", log_index)
+            return LogResponse(ack=False, term=self.term, index=self.next_index)
         
         # If the log index is less than the current term, delete the log entry until it matches leader
         # Sucessful case
         elif (log_index < self.next_index):
+            print("SUCCESS I AM BACKUP WITH NEXT INDEX " , self.next_index, " LOG INDEX: ", log_index)
             del self.log[log_index:]
             self.next_index = log_index
             # Return a positive log response
-            return LogResponse(ack=True, term=self.term)           
+            return LogResponse(ack=True, term=self.term, index=self.next_index)           
         
         # If the log index is the same as the next index, append the log entry
         # Sucessful case
@@ -413,7 +412,7 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
             self.commit_command(request.command)
             
             # Return a positive log response
-            return LogResponse(ack=True, term=self.term)
+            return LogResponse(ack=True, term=self.term, index=self.next_index)
         
 
     def TryLog(self, logItem: LogItem) -> bool:
@@ -460,23 +459,23 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
                 else:
                     # if the log is not successfully replicated, update the next index
                     backup_status[backup]["next_index"] = response.index
+                    print("FAIL FIRST TRY, BACKUP: ", backup, " NEXT INDEX: ", response.index)
                     
                     # send logs with the next index to the backup until it catches up
-                    while backup_status[backup]["next_index"] < self.next_index:
+                    while backup_status[backup]["next_index"] < logItem.index:
+                        
+                        entry = self.log[backup_status[backup]["next_index"]]
+                        
                         request = LogEntry(
-                            index=backup_status[backup]["next_index"],
-                            term=self.log[backup_status[backup]["next_index"]].term,
-                            command=self.log[backup_status[backup]["next_index"]].command
+                            index=entry.index,
+                            term=entry.term,
+                            command=entry.command
                         )
                         response = stub.WriteLog(request)
                         if response.ack:
                             backup_status[backup]["next_index"] += 1
-                        else:
-                            break
                         
-                    # if after the while loop the backup has caught up, update the status
-                    if backup_status[backup]["next_index"] == self.next_index:
-                        backup_status[backup]["success"] = True
+                    backup_status[backup]["success"] = True
                     # if the backup has not caught up, continue to the next backup, and do not update the status to success
                         
             except grpc.RpcError as e:
@@ -484,14 +483,17 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
                 logging.error(f"Failed to send log entry to backup {backup}")
                 continue
                 
-            # check if a majority of the backups have successfully replicated the log
-            success_count = sum([1 for status in backup_status.values() if status["success"]])
-            if success_count > len(self.backups) // 2:
-                replicated = True
-                
-                # Write log to primary's own log
-                self.log.append(logItem)
-                self.next_index += 1
+        # check if a majority of the backups have successfully replicated the log
+        success_count = sum([1 for status in backup_status.values() if status["success"]])
+        
+        print("SUCCESS COUNT: ", success_count)
+        
+        if success_count > len(self.backups) // 2:
+            replicated = True
+            
+            # Write log to primary's own log
+            self.log.append(logItem)
+            self.next_index += 1
         
         return replicated
 

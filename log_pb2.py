@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tlog.proto\x12\x03log\"F\n\x08LogEntry\x12\x0c\n\x04term\x18\x01 \x01(\x05\x12\r\n\x05index\x18\x02 \x01(\x05\x12\x0f\n\x07\x63ommand\x18\x03 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x04 \x01(\t\"(\n\x0bLogResponse\x12\x0b\n\x03\x61\x63k\x18\x01 \x01(\x08\x12\x0c\n\x04term\x18\x02 \x01(\x05\x32\x35\n\x06Logger\x12+\n\x08WriteLog\x12\r.log.LogEntry\x1a\x10.log.LogResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\tlog.proto\x12\x03log\"F\n\x08LogEntry\x12\x0c\n\x04term\x18\x01 \x01(\x05\x12\r\n\x05index\x18\x02 \x01(\x05\x12\x0f\n\x07\x63ommand\x18\x03 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x04 \x01(\t\"7\n\x0bLogResponse\x12\x0b\n\x03\x61\x63k\x18\x01 \x01(\x08\x12\x0c\n\x04term\x18\x02 \x01(\x05\x12\r\n\x05index\x18\x03 \x01(\x05\x32\x35\n\x06Logger\x12+\n\x08WriteLog\x12\r.log.LogEntry\x1a\x10.log.LogResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -34,7 +34,7 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_LOGENTRY']._serialized_start=18
   _globals['_LOGENTRY']._serialized_end=88
   _globals['_LOGRESPONSE']._serialized_start=90
-  _globals['_LOGRESPONSE']._serialized_end=130
-  _globals['_LOGGER']._serialized_start=132
-  _globals['_LOGGER']._serialized_end=185
+  _globals['_LOGRESPONSE']._serialized_end=145
+  _globals['_LOGGER']._serialized_start=147
+  _globals['_LOGGER']._serialized_end=200
 # @@protoc_insertion_point(module_scope)
