@@ -121,7 +121,6 @@ def run(command: str, server: ClientServer):
                 interest <account_id> <annual_interest_rate>
                 history <account_id>
               ''')
-            sys.exit(1)
     
     
 def serve():

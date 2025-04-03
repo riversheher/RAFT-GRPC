@@ -24,10 +24,11 @@ logging.basicConfig(
 )
 
 class LogItem:
-    def __init__(self, index: int, term: int, command: str):
+    def __init__(self, index: int, term: int, command: str, data = None):
         self.index = index
         self.term = term
         self.command = command
+        self.data = data
 
 
 class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankServicer, log_pb2_grpc.LoggerServicer):
@@ -236,8 +237,12 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
     def CreateAccount(self, request, context):
         if request.account_id in self.accounts:
             return AccountResponse(account_id=request.account_id, message="Account already exists.")
-        self.accounts[request.account_id] = 0.0
-        self.transaction_history[request.account_id] = []
+        
+        logItem = LogItem(index=self.next_index, term=self.term, command=f"Account {request.account_id} - Create 0")
+        if not self.TryLog(logItem):
+            return AccountResponse(account_id=request.account_id, message="Account creation failed, try again later.")
+        
+        self.commit_create_account(request.account_id)
         return AccountResponse(account_id=request.account_id, message="Account created successfully.")
 
     def GetBalance(self, request, context):
@@ -250,18 +255,14 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
     def Deposit(self, request, context):
         if request.account_id not in self.accounts:
             return TransactionResponse(account_id=request.account_id, message="Account not found.", balance=0.0)
-        self.accounts[request.account_id] += request.amount
         
         # create a log item for the deposit
-        logItem = LogItem(index=self.next_index, term=self.term, command=f"Account {request.account_id} - Deposit: {request.amount}")
+        logItem = LogItem(index=self.next_index, term=self.term, command=f"Account {request.account_id} - Deposit {request.amount}")
         # try to replicate the log
         if not self.TryLog(logItem):
             return TransactionResponse(account_id=request.account_id, message="Deposit failed, try again later", balance=self.accounts[request.account_id])
         
-        # Append the transaction to the transaction history
-        self.transaction_history[request.account_id].append(
-            TransactionResponse(account_id=request.account_id, message=f"Deposit: {request.amount}",
-                                balance=self.accounts[request.account_id]))
+        self.commit_deposit(request.account_id, request.amount)
         
         return TransactionResponse(account_id=request.account_id, message="Deposit successful.",
                                    balance=self.accounts[request.account_id])
@@ -272,18 +273,14 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
         if self.accounts[request.account_id] < request.amount:
             return TransactionResponse(account_id=request.account_id, message="Insufficient funds.",
                                        balance=self.accounts[request.account_id])
-        self.accounts[request.account_id] -= request.amount
         
         #create a log item for the withdrawal
-        logItem = LogItem(index=self.next_index, term=self.term, command=f"Account {request.account_id} - Withdraw: {request.amount}")
+        logItem = LogItem(index=self.next_index, term=self.term, command=f"Account {request.account_id} - Withdraw {request.amount}")
         # try to replicate the log
         if not self.TryLog(logItem):
             return TransactionResponse(account_id=request.account_id, message="Withdrawal failed, try again later", balance=self.accounts[request.account_id])
         
-        # Append the transaction to the transaction history
-        self.transaction_history[request.account_id].append(
-            TransactionResponse(account_id=request.account_id, message=f"Withdraw: {request.amount}",
-                                balance=self.accounts[request.account_id]))
+        self.commit_withdraw(request.account_id, request.amount)
         
         return TransactionResponse(account_id=request.account_id, message="Withdrawal successful.",
                                    balance=self.accounts[request.account_id])
@@ -291,26 +288,93 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
     def CalculateInterest(self, request, context):
         if request.account_id not in self.accounts:
             return TransactionResponse(account_id=request.account_id, message="Account not found.", balance=0.0)
-        interest = self.accounts[request.account_id] * request.annual_interest_rate / 100
-        self.accounts[request.account_id] += interest
         
         #create a log item for the interest
-        logItem = LogItem(index=self.next_index, term=self.term, command=f"Account {request.account_id} - Interest: {interest}")
+        logItem = LogItem(index=self.next_index, term=self.term, command=f"Account {request.account_id} - Interest {request.annual_interest_rate}")
         if not self.TryLog(logItem):
             return TransactionResponse(account_id=request.account_id, message="Interest calculation failed, try again later", balance=self.accounts[request.account_id])
         
-        # Append the transaction to the transaction history
-        self.transaction_history[request.account_id].append(
-            TransactionResponse(account_id=request.account_id, message=f"Interest Applied: {interest}",
-                                balance=self.accounts[request.account_id]))
+        self.commit_interest(request.account_id, request.annual_interest_rate)
         
-        return TransactionResponse(account_id=request.account_id, message=f"Interest applied: {interest}",
+        return TransactionResponse(account_id=request.account_id, message=f"Interest rate applied: {request.annual_interest_rate}%",
                                    balance=self.accounts[request.account_id])
 
     def GetHistory(self, request, context):
         if request.account_id not in self.transaction_history:
             return HistoryResponse(account_id=request.account_id, transactions=[])
         return HistoryResponse(account_id=request.account_id, transactions=self.transaction_history[request.account_id])
+
+    def commit_command(self, command: str):
+        """Parse the command string and conduct it."""
+        parts = command.split("-")
+        if len(parts) < 2:
+            return
+        
+        account_info = parts[0].strip().split(" ")
+        if len(account_info) < 2:
+            return
+        
+        account_id = account_info[1]
+        
+        action_info = parts[1].strip().split(" ")
+        if len(action_info) < 2:
+            return
+        
+        match action_info[0]:
+            case "Create":
+                self.commit_create_account(account_id)
+                return
+            case "Deposit":
+                amount = float(action_info[1])
+                self.commit_deposit(account_id, amount)
+                return
+            case "Withdraw":
+                amount = float(action_info[1])
+                self.commit_withdraw(account_id, amount)
+                return
+            case "Interest":
+                interest_rate = float(action_info[1])
+                self.commit_interest(account_id, interest_rate)
+                return
+            case _:
+                logging.error(f"Unknown command: {command}")
+        
+    def commit_create_account(self, account_id: str):
+        self.accounts[account_id] = 0.0
+        self.transaction_history[account_id] = []
+        logging.info(f"Account {account_id} created successfully.")
+        
+    def commit_deposit(self, account_id: str, amount: float):
+        self.accounts[account_id] += amount
+        
+        # Append the transaction to the transaction history
+        self.transaction_history[account_id].append(
+            TransactionResponse(account_id=account_id, message=f"Deposit: {amount}",
+                                balance=self.accounts[account_id]))
+        
+        logging.info(f"Deposited {amount} to account {account_id}. New balance: {self.accounts[account_id]}")
+        
+    def commit_withdraw(self, account_id: str, amount: float):
+        self.accounts[account_id] -= amount
+        
+        # Append the transaction to the transaction history
+        self.transaction_history[account_id].append(
+            TransactionResponse(account_id=account_id, message=f"Withdraw: {amount}",
+                                balance=self.accounts[account_id]))
+        
+        logging.info(f"Withdrew {amount} from account {account_id}. New balance: {self.accounts[account_id]}")
+
+    def commit_interest(self, account_id: str, interest_rate: float):
+        interest = self.accounts[account_id] * (interest_rate / 100)
+        self.accounts[account_id] += interest
+        
+        # Append the transaction to the transaction history
+        self.transaction_history[account_id].append(
+            TransactionResponse(account_id=account_id, message=f"Interest Applied: {interest}",
+                                balance=self.accounts[account_id]))
+        
+        logging.info(f"Applied interest of {interest} to account {account_id}. New balance: {self.accounts[account_id]}")
+        
 
     #TODO: Log methods
     def WriteLog(self, request, context):
@@ -344,6 +408,10 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
             self.log.append(entry)
             self.next_index += 1
             self.term = log_term
+            
+            # update state of system/accounts
+            self.commit_command(request.command)
+            
             # Return a positive log response
             return LogResponse(ack=True, term=self.term)
         
