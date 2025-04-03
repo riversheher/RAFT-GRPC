@@ -14,6 +14,8 @@ ELECTION_TIMEOUT = 10   # Timeout before starting election
 
 from log_pb2 import LogEntry, LogResponse
 from bank_pb2 import AccountRequest, AccountResponse, BalanceResponse, DepositRequest, WithdrawRequest, InterestRequest, TransactionResponse, HistoryRequest, HistoryResponse
+from client_pb2_grpc import ClientStub
+from client_pb2 import UpdatePrimaryRequest
 
 # configure logging message
 logging.basicConfig(
@@ -52,6 +54,9 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
         # key: account_id, value: list of transactions
         self.transaction_history = {}
         
+        #Where is the client
+        self.client = "50050"
+        
         if self.isPrimary:
             self.old_primary = node_id
             # start a background thread for sending heartbeats
@@ -59,6 +64,20 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
         else:
             # if the node is follower monitor heartbeats
             threading.Thread(target=self.monitor_heartbeat, daemon=True).start()
+
+    def update_client_with_primary(self):
+        # create a gRPC communication channel to the client
+        channel = grpc.insecure_channel(f'localhost:{self.client}')
+        stub = ClientStub(channel)
+        request = UpdatePrimaryRequest(
+            port=self.node_id
+        )
+        response = stub.UpdatePrimary(request)
+        if response.ack:
+            logging.info(f"Client updated with new primary: {self.node_id}")
+        else:
+            logging.error(f"Failed to update client with new primary: {self.node_id}")
+            
 
     def send_heartbeats(self):
         try:
@@ -164,6 +183,7 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
                 self.backups = [b for b in self.backups if b != self.node_id]   # remove leader from backup list
 
                 logging.info(f"Election won! Node {self.node_id} becomes primary for term {self.term}")
+                self.update_client_with_primary()
                 threading.Thread(target=self.send_heartbeats, daemon=True).start()
             else:
                 logging.warning(f"Election failed for term {self.term}")
@@ -404,9 +424,6 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
                 # Write log to primary's own log
                 self.log.append(logItem)
                 self.next_index += 1
-        
-        
-        
         
         return replicated
 
