@@ -381,20 +381,17 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
         if (self.isPrimary):
             #return true in this case since the primary should always be able to write to its own log
             #primary will write to its own log in the TryLog method, after majority of backups have replicated the log
-            print("SUCCESS I AM PRIMARY")
             return LogResponse(ack=True, term=self.term, index=self.next_index)
         
         # If the log index is greater than the next index, return a negative log response
         # The leader should now try sending a lower index until it matches the follower
         # Unsucessful case
         if (log_index > self.next_index):
-            print("FAIL I AM BACKUP WITH NEXT INDEX " , self.next_index, " LOG INDEX: ", log_index)
             return LogResponse(ack=False, term=self.term, index=self.next_index)
         
         # If the log index is less than the current term, delete the log entry until it matches leader
         # Sucessful case
         elif (log_index < self.next_index):
-            print("SUCCESS I AM BACKUP WITH NEXT INDEX " , self.next_index, " LOG INDEX: ", log_index)
             del self.log[log_index:]
             self.next_index = log_index
             # Return a positive log response
@@ -459,7 +456,6 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
                 else:
                     # if the log is not successfully replicated, update the next index
                     backup_status[backup]["next_index"] = response.index
-                    print("FAIL FIRST TRY, BACKUP: ", backup, " NEXT INDEX: ", response.index)
                     
                     # send logs with the next index to the backup until it catches up
                     while backup_status[backup]["next_index"] < logItem.index:
@@ -486,7 +482,6 @@ class BankServer(heartbeat_pb2_grpc.HeartbeatServicer, bank_pb2_grpc.BankService
         # check if a majority of the backups have successfully replicated the log
         success_count = sum([1 for status in backup_status.values() if status["success"]])
         
-        print("SUCCESS COUNT: ", success_count)
         
         if success_count > len(self.backups) // 2:
             replicated = True
