@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package client;
+
+service Client {
+  rpc UpdatePrimary(UpdatePrimaryRequest) returns (UpdatePrimaryResponse);
+}
+
+message UpdatePrimaryRequest { string port = 1; }
+
+message UpdatePrimaryResponse { bool ack = 1; }

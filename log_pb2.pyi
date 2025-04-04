@@ -17,23 +17,11 @@ class LogEntry(_message.Message):
     def __init__(self, term: _Optional[int] = ..., index: _Optional[int] = ..., command: _Optional[str] = ..., data: _Optional[str] = ...) -> None: ...
 
 class LogResponse(_message.Message):
-    __slots__ = ("ack",)
+    __slots__ = ("ack", "term", "index")
     ACK_FIELD_NUMBER: _ClassVar[int]
-    ack: int
-    def __init__(self, ack: _Optional[int] = ...) -> None: ...
-
-class IndexRequest(_message.Message):
-    __slots__ = ("term", "index")
     TERM_FIELD_NUMBER: _ClassVar[int]
     INDEX_FIELD_NUMBER: _ClassVar[int]
+    ack: bool
     term: int
     index: int
-    def __init__(self, term: _Optional[int] = ..., index: _Optional[int] = ...) -> None: ...
-
-class IndexResponse(_message.Message):
-    __slots__ = ("term", "index")
-    TERM_FIELD_NUMBER: _ClassVar[int]
-    INDEX_FIELD_NUMBER: _ClassVar[int]
-    term: int
-    index: int
-    def __init__(self, term: _Optional[int] = ..., index: _Optional[int] = ...) -> None: ...
+    def __init__(self, ack: bool = ..., term: _Optional[int] = ..., index: _Optional[int] = ...) -> None: ...
